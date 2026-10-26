@@ -1,4 +1,4 @@
-
+const postsService = require("../services/posts.service");
 const usersService = require("../services/users.service");
 
 function parsePositiveInteger(value) {
@@ -40,8 +40,17 @@ async function create(req, res) {
   }
 }
 
+
 async function list(req, res) {
-  const { page: pageQuery, limit: limitQuery, sortBy, order, isPrivate, search } = req.query;
+  const {
+    page: pageQuery,
+    limit: limitQuery,
+    sortBy,
+    order,
+    isPrivate,
+    search,
+    hasPosts,
+  } = req.query;
 
   const page = parsePositiveInteger(pageQuery);
   const requestedLimit = parsePositiveInteger(limitQuery);
@@ -55,9 +64,10 @@ async function list(req, res) {
     });
   }
 
-  const allowedSort = ["createdAt", "username", "fullname"];
-
-  if (sortBy !== undefined && !allowedSort.includes(sortBy)) {
+  if (
+    sortBy !== undefined &&
+    !["createdAt", "username", "fullname"].includes(sortBy)
+  ) {
     return res.status(400).json({
       error: "sortBy must be one of: createdAt, username, fullname",
     });
@@ -69,16 +79,24 @@ async function list(req, res) {
     });
   }
 
-  let privateValue;
+  if (
+    isPrivate !== undefined &&
+    isPrivate !== "true" &&
+    isPrivate !== "false"
+  ) {
+    return res.status(400).json({
+      error: "isPrivate must be true or false",
+    });
+  }
 
-  if (isPrivate !== undefined) {
-    if (isPrivate !== "true" && isPrivate !== "false") {
-      return res.status(400).json({
-        error: "isPrivate must be true or false",
-      });
-    }
-
-    privateValue = isPrivate === "true";
+  if (
+    hasPosts !== undefined &&
+    hasPosts !== "true" &&
+    hasPosts !== "false"
+  ) {
+    return res.status(400).json({
+      error: "hasPosts must be true or false",
+    });
   }
 
   const result = await usersService.listUsers({
@@ -86,12 +104,17 @@ async function list(req, res) {
     limit: Math.min(requestedLimit ?? 10, 50),
     sortBy: sortBy ?? "createdAt",
     order: order ?? "desc",
-    isPrivate: privateValue,
+    isPrivate:
+      isPrivate === undefined ? undefined : isPrivate === "true",
     search,
+    hasPosts:
+      hasPosts === undefined ? undefined : hasPosts === "true",
   });
 
   return res.status(200).json(result);
 }
+
+
 
 async function getOne(req, res) {
   const user = await usersService.getUserById(req.params.id);
@@ -102,6 +125,64 @@ async function getOne(req, res) {
 
   return res.status(200).json(user);
 }
+
+
+async function getPosts(req, res) {
+  const user = await usersService.userExists(req.params.id);
+
+  if (!user) {
+    return res.status(404).json({ error: "User not found" });
+  }
+
+  const page = parsePositiveInteger(req.query.page);
+  const requestedLimit = parsePositiveInteger(req.query.limit);
+
+  if (
+    (req.query.page !== undefined && page === null) ||
+    (req.query.limit !== undefined && requestedLimit === null)
+  ) {
+    return res.status(400).json({
+      error: "page and limit must be positive integers",
+    });
+  }
+
+  const result = await postsService.getPostsByUser(
+    req.params.id,
+    page ?? 1,
+    Math.min(requestedLimit ?? 10, 50)
+  );
+
+  return res.status(200).json(result);
+}
+
+async function getLikedPosts(req, res) {
+  const user = await usersService.userExists(req.params.id);
+
+  if (!user) {
+    return res.status(404).json({ error: "User not found" });
+  }
+
+  const page = parsePositiveInteger(req.query.page);
+  const requestedLimit = parsePositiveInteger(req.query.limit);
+
+  if (
+    (req.query.page !== undefined && page === null) ||
+    (req.query.limit !== undefined && requestedLimit === null)
+  ) {
+    return res.status(400).json({
+      error: "page and limit must be positive integers",
+    });
+  }
+
+  const result = await postsService.getLikedPosts(
+    req.params.id,
+    page ?? 1,
+    Math.min(requestedLimit ?? 10, 50)
+  );
+
+  return res.status(200).json(result);
+}
+
 
 async function update(req, res) {
   const { fullname, bio, isPrivate } = req.body;
@@ -136,4 +217,12 @@ async function remove(req, res) {
   }
 }
 
-module.exports = { create, list, getOne, update, remove };
+module.exports = {
+  create,
+  list,
+  getOne,
+  update,
+  remove,
+  getPosts,
+  getLikedPosts,
+};

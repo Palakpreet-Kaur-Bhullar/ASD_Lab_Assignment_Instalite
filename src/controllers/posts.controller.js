@@ -1,5 +1,6 @@
 
 const postsService = require("../services/posts.service");
+const usersService = require("../services/users.service");
 
 function parsePositiveInteger(value) {
   if (value === undefined) return null;
@@ -16,21 +17,33 @@ function isValidDate(value) {
     !Number.isNaN(new Date(value).getTime());
 }
 
-async function create(req, res) {
-  const { imageUrl, caption, location } = req.body;
 
-  if (!imageUrl) {
-    return res.status(400).json({ error: "imageUrl is required" });
+async function create(req, res) {
+  const { imageUrl, authorId, caption, location } = req.body;
+
+  if (!imageUrl || authorId === undefined || authorId === null) {
+    return res.status(400).json({
+      error: "imageUrl and authorId are required",
+    });
+  }
+
+  const author = await usersService.getUserById(Number(authorId));
+
+  if (!author) {
+    return res.status(404).json({ error: "User not found" });
   }
 
   const post = await postsService.createPost({
     imageUrl,
+    authorId: Number(authorId),
     ...(caption !== undefined ? { caption } : {}),
     ...(location !== undefined ? { location } : {}),
   });
 
   return res.status(201).json(post);
 }
+
+
 
 async function list(req, res) {
   const {
@@ -56,11 +69,12 @@ async function list(req, res) {
     });
   }
 
-  const allowedSort = ["createdAt", "updatedAt"];
-
-  if (sortBy !== undefined && !allowedSort.includes(sortBy)) {
+  if (
+    sortBy !== undefined &&
+    !["createdAt", "updatedAt", "likes"].includes(sortBy)
+  ) {
     return res.status(400).json({
-      error: "sortBy must be one of: createdAt, updatedAt",
+      error: "sortBy must be one of: createdAt, updatedAt, likes",
     });
   }
 
@@ -70,9 +84,15 @@ async function list(req, res) {
     });
   }
 
+  function validDate(value) {
+    return value !== undefined &&
+      value !== "" &&
+      !Number.isNaN(new Date(value).getTime());
+  }
+
   if (
-    (from !== undefined && !isValidDate(from)) ||
-    (to !== undefined && !isValidDate(to))
+    (from !== undefined && !validDate(from)) ||
+    (to !== undefined && !validDate(to))
   ) {
     return res.status(400).json({
       error: "from and to must be valid dates",
@@ -102,6 +122,7 @@ async function getOne(req, res) {
 
   return res.status(200).json(post);
 }
+
 
 async function update(req, res) {
   const { caption, location } = req.body;

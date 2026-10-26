@@ -1,6 +1,13 @@
 
 const prisma = require("../db");
 
+async function userExists(id) {
+  return prisma.user.findUnique({
+    where: { id: Number(id) },
+    select: { id: true }
+  });
+}
+
 async function createUser(data) {
   return prisma.user.create({ data });
 }
@@ -74,4 +81,5 @@ module.exports = {
   getUserById,
   updateUser,
   deleteUser,
+  userExists
 };
