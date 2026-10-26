@@ -2,31 +2,69 @@
 const prisma = require("../db");
 
 async function createUser(data) {
-  return await prisma.user.create({
-    data
-  });
+  return prisma.user.create({ data });
 }
 
-async function listUsers() {
-  return await prisma.user.findMany();
+async function listUsers(options = {}) {
+  const {
+    page = 1,
+    limit = 10,
+    sortBy = "createdAt",
+    order = "desc",
+    isPrivate,
+    search,
+  } = options;
+
+  const where = {};
+
+  if (isPrivate !== undefined) {
+    where.isPrivate = isPrivate;
+  }
+
+  if (search) {
+    where.OR = [
+      { username: { contains: search, mode: "insensitive" } },
+      { fullname: { contains: search, mode: "insensitive" } },
+    ];
+  }
+
+  const [data, total] = await prisma.$transaction([
+    prisma.user.findMany({
+      where,
+      orderBy: { [sortBy]: order },
+      skip: (page - 1) * limit,
+      take: limit,
+    }),
+    prisma.user.count({ where }),
+  ]);
+
+  return {
+    data,
+    meta: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
 }
 
 async function getUserById(id) {
-  return await prisma.user.findUnique({
-    where: { id }
+  return prisma.user.findUnique({
+    where: { id },
   });
 }
 
 async function updateUser(id, data) {
-  return await prisma.user.update({
+  return prisma.user.update({
     where: { id },
-    data
+    data,
   });
 }
 
 async function deleteUser(id) {
-  return await prisma.user.delete({
-    where: { id }
+  return prisma.user.delete({
+    where: { id },
   });
 }
 
@@ -35,5 +73,5 @@ module.exports = {
   listUsers,
   getUserById,
   updateUser,
-  deleteUser
+  deleteUser,
 };
