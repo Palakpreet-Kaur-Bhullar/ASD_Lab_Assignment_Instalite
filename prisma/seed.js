@@ -1,3 +1,4 @@
+// Seeding for problem 2
 
 const prisma = require("../src/db");
 const { users, posts } = require("./seed-data");

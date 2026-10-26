@@ -1,3 +1,4 @@
+// Seeding for problem 2 (Seeded Data)
 
 const users = [
   { username: "riya_travels",  email: "riya@example.com",   fullname: "Riya Sharma",  bio: "Chasing sunsets 🌅",        isPrivate: false, createdAt: "2026-01-03T09:00:00.000Z" },
