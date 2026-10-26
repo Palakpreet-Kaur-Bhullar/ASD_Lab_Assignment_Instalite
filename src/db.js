@@ -1,3 +1,4 @@
+//DB.js file
 require("dotenv").config();
 
 const { PrismaClient } = require("@prisma/client");
